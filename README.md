@@ -7,7 +7,7 @@
 ### 步驟 1 — 建立 Repository
 
 1. 登入 GitHub，點選右上角 **+** → **New repository**
-2. Repository name 輸入：`engineering-drawing`（或自訂名稱）
+2. Repository name 輸入：`Edraw`（或自訂名稱）
 3. 設為 **Public**（GitHub Pages 免費版須為公開）
 4. 不要勾選 Initialize，直接點 **Create repository**
 
