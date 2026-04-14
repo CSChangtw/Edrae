@@ -1,0 +1,1436 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>工程 AI 出圖系統</title>
+<meta name="description" content="自動生成高品質 AI 繪圖的提示詞">
+<meta name="theme-color" content="#1a6fdb">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="工程繪圖">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root {
+  --blue:   #1a6fdb;
+  --blue2:  #0d4fa8;
+  --accent: #00c2a8;
+  --bg:     #f4f6fb;
+  --card:   #ffffff;
+  --border: #dde3ef;
+  --text:   #1e2533;
+  --muted:  #6b7a99;
+  --tag:    #e8f0fe;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Noto Sans TC', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+/* ── Header ── */
+.header {
+  background: linear-gradient(135deg, var(--blue2) 0%, var(--blue) 60%, #1e9dd6 100%);
+  color: #fff;
+  padding: 18px 20px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 2px 12px rgba(26,111,219,.25);
+}
+.header-icon { font-size: 26px; }
+.header-title { font-size: 18px; font-weight: 700; letter-spacing: .5px; }
+.header-sub { font-size: 12px; opacity: .8; margin-top: 2px; }
+
+/* ── Tabs ── */
+.tabs {
+  display: flex;
+  overflow-x: auto;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  gap: 2px;
+  padding: 0 6px;
+  scrollbar-width: none;
+}
+.tabs::-webkit-scrollbar { display: none; }
+.tab {
+  flex: 0 0 auto;
+  padding: 11px 14px 9px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  color: var(--muted);
+  white-space: nowrap;
+  transition: color .2s, border-color .2s;
+}
+.tab:hover { color: var(--blue); }
+.tab.active { border-bottom-color: var(--blue); color: var(--blue); font-weight: 700; }
+
+/* ── Main layout ── */
+.main { padding: 14px 14px 30px; display: flex; flex-direction: column; gap: 14px; }
+
+/* ── Card ── */
+.card {
+  background: var(--card);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.04);
+}
+.card-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--blue2);
+  letter-spacing: .3px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ── Form elements ── */
+.field { margin-bottom: 12px; }
+.field:last-child { margin-bottom: 0; }
+label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  margin-bottom: 5px;
+  letter-spacing: .4px;
+  text-transform: uppercase;
+}
+select, input {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 14px;
+  color: var(--text);
+  background: #fafbff;
+  outline: none;
+  transition: border-color .2s, box-shadow .2s;
+}
+select:focus, input:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(26,111,219,.12);
+}
+input::placeholder { color: #aab4cc; }
+
+/* ── Option row ── */
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+/* ── Drawing type chips ── */
+.chips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 4px; }
+.chip {
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--tag);
+  color: var(--blue2);
+  border: 1.5px solid transparent;
+  cursor: pointer;
+  transition: all .2s;
+}
+.chip.active {
+  background: var(--blue);
+  color: #fff;
+  border-color: var(--blue);
+}
+.chip:hover:not(.active) { border-color: var(--blue); }
+
+/* ── Scale chips ── */
+.scale-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.scale-chip {
+  padding: 5px 11px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #f0f4ff;
+  color: #4a6fa5;
+  border: 1.5px solid transparent;
+  cursor: pointer;
+  transition: all .2s;
+}
+.scale-chip.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+/* ── Generate button ── */
+.btn-generate {
+  width: 100%;
+  padding: 13px;
+  background: linear-gradient(135deg, var(--blue) 0%, #1e9dd6 100%);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  letter-spacing: .5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 4px 14px rgba(26,111,219,.28);
+  transition: opacity .2s, transform .15s;
+}
+.btn-generate:active { transform: scale(.98); opacity: .9; }
+
+/* ── Output ── */
+.output-area {
+  width: 100%;
+  height: 290px;
+  padding: 12px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12.5px;
+  line-height: 1.7;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #f7f9ff;
+  color: #1e2533;
+  resize: vertical;
+  outline: none;
+}
+.output-area:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(26,111,219,.1); }
+
+.btn-row { display: flex; gap: 8px; margin-top: 10px; }
+.btn-copy, .btn-clear {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity .2s;
+}
+.btn-copy { background: var(--accent); color: #fff; }
+.btn-clear { background: #ffe9e9; color: #cc3344; }
+.btn-copy:active, .btn-clear:active { opacity: .8; }
+
+/* ── Tips ── */
+.tips {
+  background: linear-gradient(135deg,#e8f5ff,#eefaf8);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 12px;
+  color: #2a5080;
+  line-height: 1.8;
+  border-left: 4px solid var(--accent);
+}
+.tips strong { font-weight: 700; }
+
+/* ── Toast ── */
+#toast {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: #1e2533;
+  color: #fff;
+  padding: 10px 22px;
+  border-radius: 24px;
+  font-size: 13px;
+  font-weight: 600;
+  opacity: 0;
+  transition: all .3s;
+  pointer-events: none;
+  z-index: 999;
+}
+/* ── Custom Combobox（標準尺寸）── */
+.combobox-wrap {
+  position: relative;
+  width: 100%;
+}
+.combobox-input-row {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fafbff;
+  overflow: hidden;
+  transition: border-color .2s, box-shadow .2s;
+}
+.combobox-input-row:focus-within {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(26,111,219,.12);
+}
+.combobox-input-row input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 9px 8px 9px 12px;
+  font-size: 14px;
+  color: var(--text);
+  outline: none;
+  margin: 0;
+  box-shadow: none;
+}
+.combobox-input-row input:focus {
+  border: none;
+  box-shadow: none;
+}
+.combobox-btn {
+  padding: 0 10px;
+  height: 100%;
+  min-height: 38px;
+  background: none;
+  border: none;
+  border-left: 1px solid var(--border);
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+}
+.combobox-btn:active { background: #f0f4ff; }
+.combobox-dropdown {
+  display: none;
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0; right: 0;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 6px 24px rgba(0,0,0,.13);
+  z-index: 200;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.combobox-dropdown.open { display: block; }
+.combobox-option {
+  padding: 11px 14px;
+  font-size: 13.5px;
+  cursor: pointer;
+  color: var(--text);
+  border-bottom: 1px solid #f0f2f8;
+}
+.combobox-option:last-child { border-bottom: none; }
+.combobox-option:active,
+.combobox-option.selected { background: var(--tag); color: var(--blue2); font-weight: 600; }
+.combobox-blank {
+  color: var(--muted);
+  font-size: 12px;
+  font-style: italic;
+  border-bottom: 2px solid var(--border);
+  background: #f7f9ff;
+}
+/* 原生 select 作為下拉選單 */
+.preset-select {
+  display: none;
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0; right: 0;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 6px 24px rgba(0,0,0,.13);
+  z-index: 200;
+  background: #fff;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 14px;
+  color: var(--text);
+  max-height: 220px;
+  overflow-y: auto;
+  outline: none;
+  cursor: pointer;
+  padding: 4px 0;
+}
+.preset-select.open {
+  display: block;
+}
+.preset-select option {
+  padding: 10px 14px;
+  font-size: 13.5px;
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-icon">📐</div>
+  <div>
+    <div class="header-title">工程 AI 出圖系統</div>
+    <div class="header-sub">自動生成高品質 AI 繪圖的提示詞</div>
+  </div>
+</div>
+
+<!-- Category Tabs -->
+<div class="tabs" id="tabs">
+  <div class="tab active"  onclick="setCategory('RC結構',this)">🏗 RC結構</div>
+  <div class="tab" onclick="setCategory('鋼結構',this)">🔩 鋼結構</div>
+  <div class="tab" onclick="setCategory('路橋工程',this)">🌉 路橋</div>
+  <div class="tab" onclick="setCategory('擋土護坡',this)">⛰ 擋土</div>
+  <div class="tab" onclick="setCategory('排水箱涵',this)">💧 排水</div>
+  <div class="tab" onclick="setCategory('水土保持',this)">🌱 水保</div>
+  <div class="tab" onclick="setCategory('景觀植栽',this)">🌳 景觀</div>
+  <div class="tab" onclick="setCategory('室內裝修',this)">🪵 室內</div>
+</div>
+
+<div class="main">
+
+  <!-- 參數設定 -->
+  <div class="card">
+    <div class="card-title">⚙️ 繪圖參數設定</div>
+
+    <div class="row2">
+      <div class="field">
+        <label>工程物件</label>
+        <select id="object"></select>
+      </div>
+      <div class="field">
+        <label>標準尺寸 / 規格</label>
+        <div class="combobox-wrap" id="presetWrap">
+          <div class="combobox-input-row">
+            <input id="presetCustom" type="text" placeholder="選擇或直接輸入尺寸…" autocomplete="off"
+              oninput="filterCombobox(this.value)">
+            <button class="combobox-btn" type="button"
+              onmousedown="event.preventDefault()"
+              onclick="toggleCombobox()">▾</button>
+          </div>
+          <select id="presetSelect" class="preset-select" size="1" onchange="onPresetChange()"></select>
+        </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>圖面類型</label>
+      <div class="chips" id="typeChips">
+        <div class="chip active" onclick="selectType(this)">平面圖</div>
+        <div class="chip" onclick="selectType(this)">斷面圖</div>
+        <div class="chip" onclick="selectType(this)">立面圖</div>
+        <div class="chip" onclick="selectType(this)">大樣圖</div>
+        <div class="chip" onclick="selectType(this)">平面 + 斷面</div>
+        <div class="chip" onclick="selectType(this)">平面 + 斷面 + 細部</div>
+        <div class="chip" onclick="selectType(this)">鋼筋圖</div>
+        <div class="chip" onclick="selectType(this)">手繪圖</div>
+        <div class="chip" onclick="selectType(this)">彩色3D透視圖</div>
+        <div class="chip" onclick="selectType(this)">爆炸圖</div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>圖面比例</label>
+      <div class="scale-chips" id="scaleChips">
+        <div class="scale-chip" onclick="selectScale(this)">1:10</div>
+        <div class="scale-chip" onclick="selectScale(this)">1:20</div>
+        <div class="scale-chip" onclick="selectScale(this)">1:30</div>
+        <div class="scale-chip active" onclick="selectScale(this)">1:50</div>
+        <div class="scale-chip" onclick="selectScale(this)">1:100</div>
+        <div class="scale-chip" onclick="selectScale(this)">1:200</div>
+        <div class="scale-chip" onclick="selectScale(this)">NTS（不按比例）</div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>施工細節 / 補充說明（可選）</label>
+      <input id="detail" placeholder="例如：D16@200、防水層、止水鋼板、螺栓規格 M20…">
+    </div>
+
+    <div class="field">
+      <label>材料規範 / 設計標準（可選）</label>
+      <input id="standard" placeholder="例如：ACI 318、CNS 560、AISC 360…">
+    </div>
+  </div>
+
+  <!-- 生成按鈕 -->
+  <button class="btn-generate" onclick="generate()">
+    🚀 一鍵生成 AI 繪圖提示語
+  </button>
+
+  <!-- 輸出 -->
+  <div class="card">
+    <div class="card-title">📄 輸出提示語（英文）</div>
+    <textarea class="output-area" id="output" readonly placeholder="點擊上方按鈕，自動生成 AI 繪圖提示語…"></textarea>
+    <div class="btn-row">
+      <button class="btn-copy" onclick="copyText()">📋 複製提示語</button>
+      <button class="btn-clear" onclick="clearOutput()">🗑 清除</button>
+    </div>
+  </div>
+
+  <!-- 使用提示 -->
+  <div class="tips">
+    <strong>📌 使用提示</strong><br>
+    1. 選擇工程類別 → 設定物件與尺寸 → 點擊「一鍵生成」<br>
+    2. 複製提示語後，貼至 <strong>ChatGPT / Midjourney / DALL·E / Gemini</strong> 等 AI 工具<br>
+    3. 施工細節欄位填寫越具體，生成圖面越精準<br>
+    4. 建議搭配 AutoCAD 圖層設定或 BIM 模型說明效果更佳
+  </div>
+
+</div>
+
+<div id="toast">✅ 提示語已複製</div>
+
+<script>
+// ════════════════════════════════════════════════
+//  資料設定 – 依各類工程繪圖規範強化 Prompt
+//  介面：繁體中文  |  Prompt 輸出：英文
+// ════════════════════════════════════════════════
+const config = {
+
+  // ────────────────────────────────────────────
+  // RC 結構：依 建築物混凝土結構設計規範(112年版)、ACI 318、台灣建築技術規則
+  // ────────────────────────────────────────────
+  'RC結構': {
+    objects: [
+      { label: '矩形柱 (Rectangular Column)',  en: 'rectangular reinforced concrete column' },
+      { label: '圓形柱 (Circular Column)',     en: 'circular reinforced concrete column' },
+      { label: '矩形梁 (Rectangular Beam)',    en: 'rectangular reinforced concrete beam' },
+      { label: 'T型梁 (T-Beam)',              en: 'T-shaped reinforced concrete beam' },
+      { label: '樓板 (Slab)',                 en: 'reinforced concrete floor slab (one-way / two-way)' },
+      { label: '基腳 (Spread Footing)',       en: 'reinforced concrete isolated spread footing' },
+      { label: '地中梁 (Grade Beam)',         en: 'reinforced concrete grade beam' },
+      { label: '剪力牆 (Shear Wall)',         en: 'reinforced concrete shear wall with boundary element' },
+      { label: '樓梯 (Staircase)',            en: 'reinforced concrete staircase with landing' },
+    ],
+    presets: ['400×400 mm','500×500 mm','600×600 mm','300×600 mm','400×800 mm','樓板厚 150 mm','樓板厚 200 mm','基腳 1500×1500×600 mm'],
+    // ── 規範依據：建築物混凝土結構設計規範(112年版) / ACI 318-19 / 建築技術規則構造篇
+    spec: `Reinforced concrete (RC) structural drawing per Taiwan "建築物混凝土結構設計規範" (112年版, 2023) and ACI 318-19.
+Material: Concrete f'c = 28 MPa (280 kgf/cm²); Rebar per CNS 560 — longitudinal bars SD420W (fy = 420 MPa); seismic systems use SD420W / SD280W per 建築物混凝土結構設計規範 Sec. 20.2.2.5.
+MANDATORY elements to draw:
+  • Plan view: column/wall grid with centerline dimensions, rebar layout (longitudinal + ties/stirrups), bar marks
+  • Section view: full cross-section at mid-span and at support, showing all rebar layers, concrete cover (40 mm for beams/columns, 60 mm for footings), and stirrup hooks (135° seismic hook)
+  • Rebar schedule table: bar mark, diameter, spacing, length, quantity, total weight
+  • Lap splice length: ≥ 1.3 × development length per ACI 318 Sec. 25.5; show lap zone with hatching
+  • Hook and bend geometry: standard 90°/135° hook with extension length per ACI 318 Fig. R25.3.1
+  • Concrete cover dimensions on both faces; note "CLEAR COVER = XX mm"
+  • Formwork outline shown as dashed external boundary
+  • Expansion/construction joint location and type (waterstop if below grade)`,
+    notes: `Annotation rules (all text in 繁體中文):
+  • Rebar notation: D followed by diameter (D10, D13, D16, D19, D22, D25, D29, D32)
+  • Spacing notation: D16@200 (pitch in mm); two-way slab: D13@150 EW (each way)
+  • Use standard CNS hatching: RC section = diagonal hatching 45° at 2 mm pitch; soil = random dots
+  • Leader line with arrowhead for all callouts; dimension line with tick marks, no arrowheads
+  • Grid reference: column line labels (A, B, C... / 1, 2, 3...) shown at top and left margins
+  • Note block: concrete strength, rebar grade, cover, design code, date, revision cloud`,
+  },
+
+  // ────────────────────────────────────────────
+  // 鋼結構：依 鋼構造建築物鋼結構設計技術規範（內政部）、CNS 2473、台灣建築耐震設計規範
+  // ────────────────────────────────────────────
+  '鋼結構': {
+    objects: [
+      { label: 'H型鋼梁 (H-Beam)',            en: 'wide-flange H-section steel beam (W-shape)' },
+      { label: 'H型鋼柱 (H-Column)',          en: 'wide-flange H-section steel column (W-shape)' },
+      { label: '箱型柱 (Box Column)',         en: 'hollow structural section (HSS) box column' },
+      { label: '螺栓接合 (Bolted Connection)',en: 'high-strength bolted moment connection (end-plate)' },
+      { label: '焊接接合 (Welded Connection)',en: 'complete joint penetration (CJP) welded connection' },
+      { label: '柱底板 (Base Plate)',         en: 'steel column base plate with J-bolt / headed anchor' },
+      { label: '斜撐 (Brace)',               en: 'structural steel concentric diagonal brace (X or chevron)' },
+      { label: '鋼梁-RC柱接合 (Composite)',  en: 'composite steel beam to RC column connection detail' },
+    ],
+    presets: ['H-300×300×10×15','H-400×200×8×13','H-500×200×10×16','H-588×300×12×20','□-300×300×12','□-400×400×16','L-150×150×12'],
+    // ── 規範依據：鋼構造建築物鋼結構設計技術規範（內政部）/ 鋼構造建築物鋼結構施工規範 / CNS 2473 / 台灣建築耐震設計規範
+    spec: `Structural steel drawing per Taiwan "鋼構造建築物鋼結構設計技術規範" (MOLI, 2010) and "鋼構造建築物鋼結構施工規範" (MOLI, 2007).
+Material: Structural steel per CNS 2473 SS400 (fy=245 MPa, fu=400 MPa) or SM490 (fy=325 MPa, fu=490 MPa); high-strength bolts F10T per CNS 12209 or ASTM A490.
+Design method: Allowable Stress Design (ASD) or Load and Resistance Factor Design (LRFD) per 設計技術規範 Chapter 2; seismic design per 建築物耐震設計規範 and 建築技術規則.
+MANDATORY elements to draw:
+  • Framing plan: member centerlines, grid, strong-axis orientation arrows
+  • Connection detail (both elevation and plan cut):
+      – Bolt pattern: diameter, grade, gauge & pitch (e.g. M20 F10T per CNS 12209, pitch=70 mm, gauge=140 mm)
+      – Bolt hole type: standard (STD) / oversized (OVS); edge distance ≥ 1.5d, spacing ≥ 3d per 施工規範 Ch.5
+      – Weld symbol per CNS 3-B1001: process (SMAW/FCAW), fillet leg size (mm), CJP or partial-joint-penetration (PJP)
+      – Stiffener plates: thickness, width, weld to flange and web per 設計技術規範 Ch.6
+      – Gusset plate with clip corner (chamfer 25×25 mm); block shear check note
+  • Base plate: plate size and thickness, anchor bolt (地腳螺栓) layout per 施工規範 Ch.10, grout pocket depth ≥ 25 mm
+  • Surface treatment and painting schedule per 施工規範 Ch.7: paint system, DFT (μm), primer + topcoat
+  • Shop/field weld distinction: shop weld (工廠焊) = solid weld symbol; field weld (現場焊) = flag symbol
+  • Erection (組立) mark on every member: beam = B×× , column = C×× , brace = BR××
+  • Camber note on beams if span > 9 m: "起拱量 = L/500 (工廠預拱)"`,
+    notes: `Annotation rules (all text in 繁體中文):
+  • Section callout: H-300×150×6.5×9 (H型鋼 高×翼寬×腹板厚×翼板厚, mm) or □-300×300×12 (方管)
+  • Steel grade label: "CNS 2473 SS400" or "CNS 2473 SM490" — do NOT use ASTM designations alone
+  • Weld size: "角焊縫 8 mm" (fillet); "全滲透對接焊（CJP）" or "部分滲透對接焊（PJP）"
+  • Bolt torque note: "高強度螺栓 M20 F10T，扭力扳手施拴扭矩 = XXX N·m，依 CNS 12209"
+  • Fabrication tolerance note: "製作及安裝精度依鋼構造建築物鋼結構施工規範第九章規定"
+  • Fireproofing: "防火被覆：噴塗防火材料，耐火時效 XX 小時（依建築技術規則第 70 條）"
+  • Line types: centerline = chain-dot (CL), hidden = dashed, cut plane = thick chain-dot
+  • Detail bubble: circle with detail number over sheet number (e.g. 3/S-12)
+  • Revision cloud and delta mark for any change after IFC issue`,
+  },
+
+  // ────────────────────────────────────────────
+  // 路橋工程：依 公路橋梁設計規範（交通部）、公路橋梁耐震設計規範、公路路線設計規範
+  // ────────────────────────────────────────────
+  '路橋工程': {
+    objects: [
+      { label: '橋面板 (Bridge Deck)',          en: 'reinforced concrete bridge deck slab with wearing surface' },
+      { label: '預力箱型梁 (PC Box Girder)',    en: 'post-tensioned prestressed concrete box girder' },
+      { label: 'PC I型梁 (PC I-Girder)',        en: 'precast prestressed concrete I-girder (AASHTO Type)' },
+      { label: '橋墩柱 (Pier Column)',          en: 'reinforced concrete single / double column bridge pier' },
+      { label: '帽梁 (Pier Cap / Bent Cap)',    en: 'reinforced concrete pier cap beam' },
+      { label: '橋台 (Abutment)',              en: 'reinforced concrete seat-type bridge abutment with wing wall' },
+      { label: '支承 (Bearing)',               en: 'elastomeric bearing pad or pot bearing detail' },
+      { label: '道路橫斷面 (Road X-Section)',  en: 'highway road cross-section with full pavement layers' },
+      { label: '伸縮縫 (Expansion Joint)',     en: 'modular expansion joint detail at bridge end' },
+    ],
+    presets: ['橋寬 12 m (雙向2車道)','橋寬 16 m (雙向4車道)','跨距 20 m','跨距 40 m','跨距 60 m','道路寬 7.5 m (省道)','車道寬 3.65 m (高速公路)'],
+    // ── 規範依據：公路橋梁設計規範（交通部）/ 公路橋梁耐震設計規範 / 公路工程施工規範 / 公路路線設計規範
+    spec: `Highway and bridge engineering drawing per Taiwan "公路橋梁設計規範" (MOTC, 2015) and "公路橋梁耐震設計規範" (MOTC, 2019).
+Material: Concrete f'c = 28~35 MPa per 公路橋梁設計規範; PC strand fpu = 1860 MPa (ASTM A416 Grade 270); Rebar SD420W per CNS 560; structural steel CNS 2473 SM490.
+Design method: LRFD-based approach per 公路橋梁設計規範; seismic performance level and ductility capacity check per 公路橋梁耐震設計規範.
+MANDATORY elements to draw:
+  BRIDGE SUPERSTRUCTURE:
+    • General arrangement (elevation + plan): span lengths, skew angle, bearing centerlines, expansion joint locations per 公路橋梁設計規範
+    • Deck cross-section: wearing surface (AC 50 mm or waterproofing + overlay), deck slab per 公路橋梁設計規範 Chapter 4
+    • Girder section at mid-span and at support: prestress tendon profile (parabolic drape), duct diameter, anchor block
+    • Shear key and diaphragm spacing at 1/4 and 1/2 span
+    • Deck reinforcement: top and bottom mat, transverse and longitudinal, overhang bar
+  BRIDGE SUBSTRUCTURE (per 公路橋梁設計規範 Chapter 6):
+    • Pier elevation and plan: column diameter/section, clear height, pile cap size
+    • Footing or pile cap: pile layout, pile head connection, seat width (≥ 400 mm per 公路橋梁耐震設計規範 for moderate seismic)
+    • Abutment: back wall, seat width note, wing wall, approach slab (6 m × full width per spec.)
+  ROAD CROSS-SECTION (per 公路路線設計規範):
+    • Pavement layers: surface course AC-13 50 mm / binder course AC-20 50 mm / base course 200 mm / subbase 150 mm
+    • Crown slope: 2% normal; superelevation diagram if on curve
+    • Shoulder width, guardrail post spacing (4 m), clear zone width
+    • Drainage: ditch cross-section, longitudinal slope ≥ 0.3%, outlet location per 公路排水設計規範`,
+    notes: `Annotation rules (all text in 繁體中文):
+  • Elevations: all grade elevations in meters to 3 decimal places per 公路橋梁設計規範 (e.g. EL. 52.345 m)
+  • Stationing: "STA. 1+234.56" format along road centerline
+  • Bearing callout: type (彈性支承 / 鉛芯橡膠支承 / 盆式支承), design vertical load (kN), max horizontal displacement (mm)
+  • Prestress annotation: "PC鋼絞線 φ15.2 mm（ASTM A416 Gr.270），初始預力 = 0.75fpu，總預力損失估計 15~20%"
+  • Pile callout: type (PC樁 / PHC樁 / 場鑄樁), diameter, length, design capacity (kN) per 公路橋梁設計規範 Ch.6
+  • Rebar: D-number notation per CNS 560 (D13, D16, D19…); show spiral / hoop in column per 公路橋梁耐震設計規範
+  • Design vehicle load note: "設計車輛荷重依公路橋梁設計規範 HS-20-44 或 T-Load"
+  • Traffic safety note: "施工期間車道管制依交通部施工交通維持計畫規定"`,
+  },
+
+  // ────────────────────────────────────────────
+  // 擋土護坡：依台灣坡地安全管理條例、大地工程規範、CNS
+  // ────────────────────────────────────────────
+  '擋土護坡': {
+    objects: [
+      { label: '重力式擋土牆 (Gravity Wall)',    en: 'mass gravity retaining wall (plain concrete or rubble masonry)' },
+      { label: '懸臂式擋土牆 (Cantilever Wall)', en: 'cantilever reinforced concrete retaining wall' },
+      { label: '加勁擋土牆 (MSE Wall)',          en: 'mechanically stabilized earth (MSE/GRS) retaining wall' },
+      { label: '排樁 (Soldier Pile Wall)',        en: 'soldier pile and lagging earth retention system' },
+      { label: '連續壁 (Diaphragm Wall)',         en: 'reinforced concrete diaphragm wall (slurry trench method)' },
+      { label: '地錨 (Ground Anchor)',           en: 'grouted strand ground anchor with corrosion-protected tendon' },
+      { label: '岩釘 (Rock Bolt)',              en: 'passive rock bolt with bearing plate and nut detail' },
+      { label: '蛇籠 (Gabion Wall)',            en: 'gabion basket retaining wall with geotextile filter' },
+      { label: '格框護坡 (Concrete Frame)',     en: 'concrete grid frame slope protection with vegetation infill' },
+    ],
+    presets: ['牆高 3 m','牆高 5 m','牆高 8 m','牆高 10 m','底板寬 B=0.6H','錨長 12 m (自由段 5 m)','連續壁厚 600 mm'],
+    // ── 規範依據：建築物基礎構造設計規範第七章擋土牆（內政部國土署）/ 水土保持技術規範第二二節擋土牆 / 建築技術規則
+    spec: `Earth retaining and slope stabilization drawing per Taiwan "建築物基礎構造設計規範" Ch.7 擋土牆 (NLMA, 2001) and "水土保持技術規範" Ch.22 (COA).
+MANDATORY elements to draw:
+  RETAINING WALL SECTION (per 建築物基礎構造設計規範 第7章):
+    • Full cross-section showing: wall body / heel / toe / key (if any)
+    • Soil pressure diagram: active earth pressure using Coulomb or Rankine method per Sec.7.3.2, including surcharge strip load
+    • Stability checks annotation (per Sec.7.4):
+        – Overturning FS ≥ 1.5 (long-term); FS ≥ 1.2 (seismic) per Sec.7.4.2
+        – Sliding FS ≥ 1.5 (long-term); FS ≥ 1.2 (seismic) per Sec.7.4.3
+        – Bearing capacity FS ≥ 3.0; total and differential settlement within allowable limits per Sec.7.4.4
+        – Overall (deep-seated) stability FS ≥ 1.5 (long-term), FS ≥ 1.2 (seismic), FS ≥ 1.1 (highest water table) per Sec.7.4.4
+    • Drainage system (CRITICAL, per Sec.7.2):
+        – Filter layer: 300 mm clean gravel wrapped in geotextile (nonwoven, ≥ 200 g/m²)
+        – Weep holes: φ75 mm PVC pipe @ 2.0 m spacing (H and V), with gravel filter sock
+        – Perforated collector pipe at footing connected to drainage blanket
+    • Backfill zone: select granular (non-plastic) per Sec.7.2; compaction ≥ 95% Modified Proctor
+    • Settlement monitoring point location noted on drawing
+  ANCHOR / NAIL:
+    • Ground anchor section: free length / bond length, grout body diameter, tendon cover
+    • Tendon: HDPE sheathing in free zone, trumpet and anchor head per design; proof test = 1.33×design load
+    • Rock bolt / soil nail: diameter, length, grouting pressure, head plate (鋼板+螺帽) detail
+  RETAINING WALL TYPES (per 水土保持技術規範 Sec.118):
+    • Height limits: 重力式 ≤ 4 m effective; 懸臂式 ≤ 8 m; 扶壁式 ≤ 10 m; 蛇籠 ≤ 4 m total
+    • Gabion: φ75 mm stone minimum long dimension; wire mesh galvanized; geotextile filter behind
+    • MSE wall: geogrid vertical spacing, pullout length, facing panel connection and 1H:50V batter`,
+    notes: `Annotation rules (all text in 繁體中文):
+  • Soil layer callout: 土層名稱, N值 (SPT-N), γ (kN/m³), φ (°), c (kPa) — per 建築物基礎構造設計規範 notation
+  • Earth pressure: Ka (主動土壓力係數), Ko (靜止土壓力係數) — show calculation formula reference (Coulomb/Rankine)
+  • Wall batter note: "牆面傾斜 1:XX (水平:垂直)"
+  • Ground anchor annotation: "地錨 φ150 mm, L=15m (自由段 6m / 固定段 9m), 設計拉力 T=600 kN"
+  • Geotextile: "不織布，單位重 ≥ 200 g/m²，透水率 / 搭接 ≥ 500 mm"
+  • Compaction note: "回填料夯實，Modified Proctor 相對夯實度 K ≥ 95%，依水土保持技術規範"
+  • Safety factor table: show FS (傾覆 / 滑動 / 承載 / 整體) in a bordered table on drawing per 建築物基礎構造設計規範 Sec.7.4
+  • Seismic earth pressure: "地震土壓力依 Mononobe-Okabe 法計算，設計地震係數依建築物耐震設計規範"`,
+  },
+
+  // ────────────────────────────────────────────
+  // 排水箱涵：依水利工程技術規範、下水道工程設施標準
+  // ────────────────────────────────────────────
+  '排水箱涵': {
+    objects: [
+      { label: '矩形箱涵 (RC Box Culvert)',      en: 'cast-in-place reinforced concrete box culvert' },
+      { label: '預鑄箱涵 (Precast Box Culvert)', en: 'precast reinforced concrete box culvert section' },
+      { label: '圓形涵管 (Circular Culvert)',    en: 'circular reinforced concrete or HDPE culvert pipe' },
+      { label: 'U型排水路 (U-Channel)',          en: 'precast U-shaped open drainage channel' },
+      { label: '集水井 (Manhole / Catch Basin)', en: 'reinforced concrete manhole with frame and cover' },
+      { label: '截水溝 (Intercepting Ditch)',    en: 'hillside intercepting drainage ditch (concrete-lined)' },
+      { label: '排水側溝 (Roadside Ditch)',      en: 'roadside drainage ditch with precast or cast-in-place lining' },
+      { label: '出水口保護 (Outlet Protection)', en: 'culvert outlet protection with riprap or energy dissipator' },
+    ],
+    presets: ['800×800 mm','1000×1000 mm','1200×1200 mm','1500×1500 mm','2000×1500 mm','管徑 φ600 mm','管徑 φ900 mm','管徑 φ1200 mm'],
+    // ── 規範依據：水利工程技術規範 / 下水道工程設施標準 / FHWA HEC-14 消能設計
+    spec: `Drainage and culvert engineering drawing per Taiwan Water Resources Agency Technical Specifications and MOEA drainage design guidelines.
+Hydraulic design basis: Manning's n = 0.013 (concrete), design discharge Q (m³/s) from rational method.
+MANDATORY elements to draw:
+  PLAN VIEW:
+    • Culvert/channel alignment with stationing, skew angle to road centerline
+    • Upstream and downstream headwall / wingwall plan shape
+    • Flow direction arrow (MANDATORY on all drainage drawings)
+    • Catch basin / manhole locations with spacing ≤ 50 m or at every change of direction
+  CROSS-SECTION VIEW:
+    • Box culvert / pipe: full wall and slab thickness, internal clear dimensions
+    • Rebar layout: top slab, bottom slab, side walls – show both interior and exterior bars
+    • Haunch (corner fillet): 150×150 mm min. with diagonal bar
+    • Bedding layer: gravel bedding 150 mm min.; concrete cradle for rigid pipe
+    • Backfill zone and compaction requirement
+    • Waterproofing: note if hydrostatic pressure or seepage concern (PVC waterstop at construction joints)
+  HYDRAULIC DATA TABLE (on drawing):
+    • Invert elevation at inlet (IL-IN) and outlet (IL-OUT)
+    • Pipe / channel slope S (%) – minimum 0.3% for self-cleaning
+    • Design flow Q, velocity V, depth of flow d/D ratio
+    • Headwater-to-diameter ratio HW/D ≤ 1.5 (non-pressure flow preferred)
+  OUTLET PROTECTION:
+    • Riprap apron: size (D50), length, thickness, geotextile filter below
+    • Energy dissipator type if V > 3 m/s`,
+    notes: `Annotation rules (all text in 繁體中文):
+  • Invert elevation: "管底高程 IL = XX.XXX m"
+  • Slope notation: "坡降 S = X.XX%"
+  • Pipe joint: "承插口接頭 / 平口橡膠環接頭"
+  • Manhole step: "踏步 φ20 mm 鍍鋅鋼筋 @ 300 mm"
+  • Frame and cover: "鑄鐵框蓋 750×750 mm, 承載荷重 T-25 (250 kN)"
+  • Note block: hydraulic data summary, Manning's n value, design frequency (return period)`,
+  },
+
+  // ────────────────────────────────────────────
+  // 水土保持：依水土保持技術規範（農委會）、坡地社區安全規定
+  // ────────────────────────────────────────────
+  '水土保持': {
+    objects: [
+      { label: '沉砂池 (Sedimentation Basin)',   en: 'temporary construction-site sedimentation basin' },
+      { label: '土壩/攔砂壩 (Check Dam)',        en: 'loose-rock or concrete check dam with overflow weir' },
+      { label: '固床工 (Grade Control Sill)',    en: 'concrete grade control structure (bed sill) in stream' },
+      { label: '土釘牆 (Soil Nail Wall)',        en: 'soil nail wall with reinforced shotcrete facing' },
+      { label: '生態護坡 (Bioengineered Slope)', en: 'bioengineered slope protection (live staking + geogrid)' },
+      { label: '植生袋擋牆 (Vegetated Bag Wall)',en: 'erosion control vegetated bag retaining structure' },
+      { label: '截水溝系統 (Runoff Control)',    en: 'hillside surface runoff interception and diversion system' },
+      { label: '跌水工 (Drop Structure)',        en: 'concrete drop structure for channel grade change' },
+    ],
+    presets: ['坡比 1:1 (45°)','坡比 1:1.5','坡比 1:2','土釘長 6 m @ 1.5 m','沉砂容積 ≥ 125 m³/ha','攔砂壩高 3 m'],
+    // ── 規範依據：水土保持技術規範（農業部）/ 水土保持工程設計參考圖冊（農業部水土保持局）/ 坡地社區安全規定
+    spec: `Soil and water conservation (SWC) facility drawing per Taiwan "水土保持技術規範" (COA, latest ed.) and "水土保持工程設計參考圖冊" (SWCB, Agricultural Council).
+MANDATORY elements to draw:
+  SEDIMENTATION BASIN (沉砂池, per 水土保持技術規範 Sec.91~93):
+    • Plan: basin shape, inlet pipe, skimmer or perforated riser outlet, emergency spillway location
+    • Section: storage depth 1.5~3.5 m per Sec.93; embankment slopes (3H:1V upstream / 2H:1V downstream)
+    • Design capacity: volume per USLE泥砂生產量估算; 臨時性 = 泥砂量 × 1.5; 永久性 ≥ 30 m³/ha (completed area)
+    • Dewatering pipe: φ200 mm PVC with trash rack; maintenance access road for machinery per Sec.93
+    • Basin maintenance note: "永久性沉砂池至少每年清除一次；臨時性每次豪雨後立即清除 (水土保持技術規範 Sec.93)"
+  CHECK DAM / SILL (節制壩, per 水土保持技術規範 Sec.51~52):
+    • Full elevation and cross-section: crest length, height, weir shape
+    • Design flood: 耐久性壩用重現期距25年；臨時性壩用10年 per Sec.52
+    • Stilling pool downstream: length ≥ 1.5× dam height, floor protection (riprap or concrete)
+    • Cut-off wall at base: depth ≥ 0.5 m into competent material
+  SOIL NAIL WALL (土釘牆, per 水土保持技術規範):
+    • Nail layout plan and section: nail length, inclination (10°~15° below horizontal), spacing (H×V)
+    • Nail section: steel bar D25~D32, grout body φ100~150 mm, head plate 200×200×10 mm
+    • Shotcrete facing: 150 mm, wire mesh φ6@150 EW, drainage weepholes φ50 PVC @ 1.5 m grid
+    • Global stability circle: minimum FS = 1.5 per 水土保持技術規範
+  BIOENGINEERED SLOPE (生態護坡, per 水土保持工程設計參考圖冊):
+    • Slope bench (水平階梯): width ≥ 1.5 m, inward slope 10%, drainage ditch behind each bench per 水土保持技術規範 Sec.89
+    • Layer: geogrid (HDPE biaxial) / growing medium 300 mm / native seed mix
+    • Live stake: spacing 300~600 mm staggered; native species priority per 水土保持工程設計參考圖冊`,
+    notes: `Annotation rules (all text in 繁體中文):
+  • Rainfall design: "設計降雨強度 I = XX mm/hr（重現期 XX 年），依水土保持技術規範 Sec.52"
+  • Sediment volume calculation: "泥砂生產量依通用土壤流失公式(USLE)估算，依水土保持技術規範 Sec.92"
+  • Slope gradient: ratio format "坡比 1:1.5 (垂直:水平)" or angle "坡角 θ = 34°"
+  • Geotextile: "不織布 (PET)，單位重 ≥ 200 g/m²，搭接 ≥ 500 mm"
+  • Native revegetation: "植生以當地原生種為優先，依農業部水土保持局水土保持工程設計參考圖冊推薦樹種"
+  • Maintenance note box: "依水土保持技術規範規定：竣工後定期巡查，暴雨後24小時內巡視沉砂池"
+  • Construction sequence: "施工順序依水土保持計畫：①截水溝→②沉砂池→③土石方→④植生覆蓋"
+  • Water and soil conservation plan note: "本工程依水土保持法規定，應擬具水土保持計畫，送主管機關審核"`,
+  },
+
+  // ────────────────────────────────────────────
+  // 景觀植栽：依造園景觀工程技術規範、都市計畫法、CNS
+  // ────────────────────────────────────────────
+  '景觀植栽': {
+    objects: [
+      { label: '喬木種植大樣 (Tree Planting)',     en: 'shade tree planting pit detail with support stake system' },
+      { label: '灌木花圃 (Shrub Bed)',             en: 'shrub planting bed with mulch and edging detail' },
+      { label: '地被植栽 (Ground Cover)',          en: 'ground cover planting layout with spacing grid' },
+      { label: '花台構造 (Raised Planter)',        en: 'raised planter box with structural wall and drainage layer' },
+      { label: '透水舖面 (Permeable Paving)',      en: 'permeable interlocking concrete pavement (PICP) system section' },
+      { label: '木平台 (Timber Deck)',             en: 'outdoor timber deck with subframe and joist detail' },
+      { label: '景觀水景 (Water Feature)',         en: 'landscape water feature with recirculating pump and waterproofing' },
+      { label: '景觀燈具基座 (Light Foundation)', en: 'landscape lighting pole foundation with conduit detail' },
+    ],
+    presets: ['喬木 H=4m, W=3m','胸徑 DBH=10 cm','支架高 2 m','植栽穴 1.2×1.2×1.0 m','覆土深 ≥ 1.0 m','透水磚 300×300×80 mm'],
+    // ── 規範依據：交通部公路景觀設計規範(109年版) / 內政部建築基地綠化設計技術規範 / 桃園市政府樹木植栽設計施工手冊 / 建築技術規則第17章綠建築基準
+    spec: `Landscape and planting construction drawing per:
+  (1) Taiwan "公路景觀設計規範" (MOTC, 2020, 109年版)
+  (2) "建築基地綠化設計技術規範" (MOLI, latest ed.) — CO₂ fixation index (固碳當量 TCO₂e/yr)
+  (3) "桃園市政府樹木植栽設計施工手冊" (Taoyuan City Government)
+  (4) 建築技術規則建築設計施工編第17章 綠建築基準
+MANDATORY elements to draw:
+  TREE PLANTING DETAIL (per 公路景觀設計規範 and 桃園市植栽設計施工手冊):
+    • Planting pit section: minimum 1.2 m wide × 1.0 m deep (or 2× root ball diameter)
+    • Growing medium layers (bottom to top):
+        – Drainage layer: 150 mm coarse gravel (D50 = 20~50 mm)
+        – Separation geotextile: nonwoven 150 g/m²
+        – Planting soil: improved loam (田土 5 : 有機堆肥 3 : 珍珠石 2 by volume)
+    • Root ball: shown as circle/ellipse with burlap; note "拆除麻布/鐵絲籠 per 桃園市植栽施工手冊"
+    • Support stake: 3× timber H-shaped frame; rubber tree tie; stake depth ≥ 600 mm below grade
+    • Root barrier: HDPE 600 mm deep adjacent to hardscape or utilities
+    • Irrigation: sub-surface drip or basin ring; give water system note per 公路景觀設計規範
+  PLANTING CONFIGURATION (per 公路景觀設計規範 109年版):
+    • Row tree spacing: native species examples — 茄苳 8~10 m, 樟樹 8~10 m, 台灣欒樹 6~8 m
+    • Central divider (中央分隔帶): select low-maintenance species with low pruning frequency
+    • Roadside green strip: consider air pollution buffering, noise reduction, small wildlife corridor per 規範 Sec.(3)
+    • Irrigation system: pre-embed water supply pipe and drip irrigation per 規範 Sec.(5)
+  GREEN AREA FIXATION INDEX (per 建築基地綠化設計技術規範):
+    • CO₂ fixation table: 生態複層 2.00 / 闊葉大喬木 1.50 / 闊葉小喬木、針葉、疏葉 1.00 / 棕櫚 0.66 / 灌木 0.50 / 蔓藤 0.40 / 草坪草花 0.30 (kgCO₂/(m².yr))
+    • Minimum cover depth: 大喬木覆土 ≥ 1.0 m; 灌木 ≥ 0.3 m; 草類 ≥ 0.2 m per 規範 Table 2
+    • Multi-story planting (複層綠化): encourage simultaneous ground-level and understory planting; CO₂ effects additive per 規範 Sec.6.5
+  PERMEABLE PAVING (per 建築技術規則 CNS):
+    • Layers: PICP 80 mm / bedding sand 25~40 mm / open-graded base 150~300 mm / subbase / subgrade`,
+    notes: `Annotation rules (all text in 繁體中文):
+  • Plant callout format (per 公路景觀設計規範 and 桃園市植栽施工手冊):
+    中文名 / 學名(斜體) / 規格 (H × W × DBH cm) / 株數
+    e.g.: 茄苳 / Bischofia javanica / H=4.0m, W=3.0m, DBH=10cm / 5株
+  • Species selection: "植栽種類優先選用台灣原生樹種，依公路景觀設計規範附錄及農業部林業署台灣原生植物建議名錄"
+  • Planting spacing: "種植間距依建築基地綠化設計技術規範表2，大喬木株距 ≥ 規定最小間距"
+  • Soil amendment: "改良土配比：田土5 / 有機堆肥3 / 珍珠石2（體積比），依桃園市植栽設計施工手冊"
+  • Mulch: "有機覆蓋物（木屑）厚 75 mm，距樹幹 50 mm 留空"
+  • Maintenance: "喬木：依桃園市植栽施工手冊，每年修剪2次（以不破壞樹形為原則）；灌木：每季修剪1次"
+  • Green building note: "基地綠化固碳當量計算依建築基地綠化設計技術規範，附 附表一 計算總表"`,
+  },
+
+  // ────────────────────────────────────────────
+  // 室內裝修：依建築技術規則、內政部建築構造編、CNS、防火規範
+  // ────────────────────────────────────────────
+  '室內裝修': {
+    objects: [
+      { label: '輕鋼架隔間牆 (Steel Stud Partition)', en: 'light-gauge steel stud partition wall system' },
+      { label: '矽酸鈣板天花 (Suspended Ceiling)',    en: 'suspended calcium silicate board ceiling grid system' },
+      { label: '地坪防水層 (Floor Waterproofing)',     en: 'floor waterproofing membrane system with finish layers' },
+      { label: '石材乾式施工 (Stone Dry-Lay)',         en: 'natural stone dry-lay wall cladding with back-anchor system' },
+      { label: '木作包覆牆 (Wood Feature Wall)',       en: 'wood veneer feature wall with substrate and concealed fixing' },
+      { label: '玻璃隔屏 (Glass Partition)',           en: 'full-height frameless tempered glass partition with patch fitting' },
+      { label: '金屬格柵天花 (Metal Baffle Ceiling)', en: 'linear metal baffle ceiling with suspension and lighting' },
+      { label: '踢腳及收頭 (Skirting / Trim Detail)', en: 'floor-to-wall skirting board and perimeter trim detail' },
+    ],
+    presets: ['輕隔間 75 mm (C型骨 65 mm)','輕隔間 100 mm (C型骨 90 mm)','天花淨高 2800 mm','天花結構高 3600 mm','石材厚 20 mm','木地板 18 mm (海島型)'],
+    // ── 規範依據：室內設計裝修製圖規範（中華民國室內設計裝修商業同業公會全國聯合會）/ CNS 11567 建築圖符號及圖例 / 建築技術規則裝修編 / CNS 3986
+    spec: `Interior fit-out construction drawing per:
+  (1) "室內設計裝修製圖規範" (NAID, 中華民國室內設計裝修商業同業公會全國聯合會)
+  (2) CNS 11567 建築圖符號及圖例 — interior drawings code prefix "I"
+  (3) Taiwan Building Technical Regulations (建築技術規則) Interior Renovation Chapter
+  (4) CNS 6183 一般結構用輕型鋼
+DRAWING SET REQUIRED (per 室內設計裝修製圖規範):
+  • 平面圖 (Floor Plan): furniture layout, door/window swing, partition locations, dimensions
+  • 天花板反射圖 (Reflected Ceiling Plan, RCP): ceiling grid, height datum, light fixtures, AC diffusers, sprinklers, smoke detectors, speakers per 室內設計裝修製圖規範 — THIS IS CRITICAL in interior drawings
+  • 立面圖 (Interior Elevation): each wall face, material indication, height dimensions, opening sizes
+  • 剖面圖 (Section): through key details showing layer build-up
+  • 大樣圖 / 細部圖 (Detail / Large-Scale): 1:5 or 1:10 node drawings
+MANDATORY elements per drawing type:
+  LIGHT PARTITION WALL:
+    • Elevation and section: total wall thickness, C-type stud size (65 mm or 90 mm), stud spacing (400 or 600 mm OC) per CNS 6183
+    • Track (U-runner) at floor and ceiling: screwed to slab @600 mm, acoustic sealant bead at perimeter
+    • Board layers: 矽酸鈣板 9 mm × 2 layers each face (note brand + thickness); board stagger joint (per 室內設計裝修製圖規範)
+    • Insulation: acoustic mineral wool density and thickness if required
+    • Fire rating: "防火時效 XX 小時（依內政部審定系統，送審號 XXXXXX）" if part of fire compartmentation
+    • Door/window frame: 2× studs at jamb, header track reinforcement
+  REFLECTED CEILING PLAN (per 室內設計裝修製圖規範 — 天花板圖為室內製圖核心要項):
+    • Grid: hanger wire (φ3.2 mm galv.) @ 900 mm grid, main tee, cross tee, perimeter wall angle
+    • Hanger attachment: concrete anchor or steel deck clip noted
+    • Ceiling material: 矽酸鈣板 9 mm (防潮型 for wet area) or mineral fiber tile 600×600 mm
+    • Services shown: light fixture type+circuit no., AC diffuser/return, sprinkler head, smoke detector, access panel
+    • Height datum: "CH = X,XXX" (ceiling height from finished floor, mm) labeled on plan
+    • Clearance note: "天花板面上方最小淨高 150 mm（管線穿越空間）"
+  FLOOR FINISH SYSTEM:
+    • Layer section (bottom to top): structural slab / leveling screed / waterproofing (PU 1.5 mm DFT, 300 mm up wall in wet areas) / protection screed / flexible tile adhesive (C2TE) / finish tile
+    • Expansion joint: 10 mm perimeter gap + silicone; field joints ≤ 6 m
+    • Threshold detail: flush or ramp ≤ 1:12 per 建築技術規則 無障礙設施
+  WALL CLADDING:
+    • Anchor system: for stone > 15 mm use 不銹鋼 SUS316 back-anchor clip, ≥ 2 anchors/panel
+    • Air gap: 20 mm behind cladding; panel joint with sealant or open-joint`,
+    notes: `Annotation rules (all text in 繁體中文):
+  • Drawing code: use "I" prefix per CNS 11567 (e.g. I-01 平面圖, I-02 天花板反射圖, I-03 立面圖)
+  • Material callout: 材料名稱 / 品牌型號（可選）/ 厚度 / 表面處理
+    e.g.: 義大利卡拉拉白大理石 / 厚 20 mm / 亮面拋光
+  • Fastener: "自攻螺絲 ST4.2×25 mm @ 200 mm, 鍍鋅，"
+  • Adhesive: "彈性瓷磚黏著劑，CNS 12611 C2TE 等級"
+  • Sealant: "矽利康 10 mm × 10 mm，中性，顏色配石材"
+  • Ceiling height notation: "CH = 2,800 mm（完成面）" — always specify as finished floor to finished ceiling
+  • Fire rating box: state "防火時效" and internal reference if wall is part of fire compartmentation per 建築技術規則
+  • Room finish schedule (裝修一覽表): 空間編號 / 地坪 / 牆面 / 天花 / 踢腳 / 備註 — mandatory on drawing per 室內設計裝修製圖規範
+  • Shop drawing submission note: "本圖為施工大樣圖，廠商施工前須提送樣品板及送審圖，經監造確認後方可施工"`,
+  },
+};
+
+// 圖面類型對照（中文介面 → 英文 Prompt）
+const typeMap = {
+  '平面圖':            'plan view (top view), showing layout, dimensions, and grid lines',
+  '斷面圖':            'cross-section view with full rebar / structural detail and dimensions',
+  '平面 + 斷面':       'combined plan view (top) and cross-section view (bottom) on same sheet',
+  '平面 + 斷面 + 細部':'plan view, cross-section view, and enlarged detail (large-scale node) on same sheet',
+  '立面圖':            'elevation view showing facade, height dimensions, and material indication',
+  '大樣圖':            'enlarged detail drawing (large scale), focusing on connection / junction node',
+  '鋼筋圖':            `reinforcing bar (rebar) drawing — a dedicated 配筋圖 (bar placement drawing) that shows ALL of the following:
+  PLAN (配筋平面圖):
+    • Every rebar position projected onto plan; bar marks (號數), spacing, and direction arrows
+    • Top and bottom mat distinguished by layer notation (TOP / BOT or 上層/下層)
+    • Column tie / spiral zones hatched; opening edge bars and corner bars called out
+  SECTION (配筋斷面圖):
+    • Full cross-section at critical locations (mid-span, support, column splice zone)
+    • All bar layers shown to scale with clear cover dimensions both faces
+    • Stirrup / tie / spiral drawn with correct hook angle (135° seismic hook per ACI 318 / 建築物混凝土結構設計規範)
+    • Bar spacing dimensioned; number of bars per layer noted
+  REBAR SCHEDULE TABLE (鋼筋數量表) — MANDATORY on same sheet:
+    | 編號 | 鋼筋號數 | 直徑(mm) | 間距(mm) | 長度(mm) | 數量 | 小計重量(kg) |
+    Include lap splice length (搭接長度) and development length (伸展長度) callouts per 建築物混凝土結構設計規範 Sec.25
+  HOOK & BEND GEOMETRY:
+    • Standard 90° hook extension = 12db; 135° seismic hook extension = 6db
+    • Minimum bend diameter per bar size shown as table or note
+  NOTES BOX: concrete f'c, rebar fy, cover, code reference (建築物混凝土結構設計規範 + CNS 560 SD420W)`,
+  '手繪圖':            `rough hand-drawn field sketch — looks like a working engineer's napkin sketch or site notebook drawing, NOT a finished technical drawing.
+CRITICAL STYLE REQUIREMENTS (must dominate the image):
+  • Drawn with a real ballpoint pen or HB pencil on slightly crumpled, off-white notebook paper or grid paper
+  • Lines are IMPERFECT: wobbly, slightly misaligned, occasional overrun at corners — NOT ruler-straight
+  • Proportions are approximate; minor distortions are acceptable and expected
+  • Text is casual hand-lettered Chinese (繁體中文): uneven stroke width, slightly tilted characters, like someone jotting notes quickly
+  • No CAD fonts, no perfect circles, no clean hatch fills — all freehand
+  • Dimension numbers written hastily next to rough arrows; not formal dimension chains
+  • Eraser smudges, light construction lines, or crossed-out corrections are welcome
+  • Paper texture visible; slight shadow or fold crease on paper edge is a plus
+SKETCH CONTENT (technically correct but loosely drawn):
+  • Show the main structural form and key dimensions only — omit fine details
+  • Rebar indicated as rough parallel lines or crossed lines, not precise bar schedules
+  • Labels are short abbreviations: "混凝土", "D16@200", "回填", "排水管" etc.
+  • One or two quick callout bubbles with arrows pointing to key elements
+  • Optional: a small isometric thumbnail sketch in corner to show 3D form
+OVERALL IMPRESSION: looks like a sketch drawn in 5–10 minutes at a job site meeting, scanned from a notebook`,
+  '爆炸圖':            `exploded view (分解圖 / 爆炸圖) — a technical exploded assembly illustration that shows how all components of the structure or assembly fit together.
+EXPLODED VIEW REQUIREMENTS:
+  OVERALL COMPOSITION:
+    • Use an isometric (等角投影) or axonometric projection at 30°–45° viewing angle
+    • Separate (explode) each distinct component along its assembly axis; maintain spatial alignment so components line up with their assembly position
+    • Explosion offset: each part displaced 80–150 mm (drawing units) from adjacent part along the assembly direction; NO overlapping of parts
+    • Show at minimum 4–8 distinct components; group sub-components that are permanently attached
+  LEADER LINES & CALLOUTS (MANDATORY):
+    • Thin dashed "explosion lines" (爆炸引線) connecting each component's displaced position back to its assembled position
+    • Leader line with filled arrowhead pointing to each component; horizontal shoulder at annotation end
+    • Each component labeled in 繁體中文: component name + material + key dimension (e.g. "底板 PL-20×300×400 mm, SS400")
+    • Part number balloon (球標): circle with sequential number (①②③…), listed in a 零件表 (parts list / BOM table) on the same sheet
+  PARTS LIST TABLE (零件表) — MANDATORY on same sheet:
+    | 件號 | 零件名稱 | 材料 / 規格 | 數量 | 備註 |
+    List every exploded component; include fasteners (bolts, anchors, dowels) as separate line items
+  ASSEMBLY SEQUENCE NOTE:
+    • Number the explosion sequence with arrows: Step ① → ② → ③ showing assembly order
+    • Note any special assembly requirement: torque value, grouting sequence, curing time, etc.
+  TECHNICAL DRAWING QUALITY:
+    • Line weight: component outlines 0.5 mm; explosion lines 0.18 mm dashed; leaders 0.25 mm
+    • Each component rendered with correct material hatch on cut faces (RC diagonal, steel solid fill, soil dots)
+    • Hidden edges shown as 0.25 mm dashed lines within each component
+    • Dimension the key overall dimensions only (length × width × height of assembled unit)
+  STYLE: clean technical illustration — NOT photorealistic, NOT hand-drawn; precision drafting quality with white background`,
+  '彩色3D透視圖':      `full-color photorealistic 3D perspective illustration (NOT a CAD drawing).
+Render the engineering structure as a high-quality, architecturally accurate 3D visualization with:
+  • Realistic materials and textures (concrete surface, steel finish, soil layers, vegetation as applicable)
+  • Natural lighting with soft shadows; daytime outdoor setting
+  • Transparent or cut-away view where helpful to reveal internal structure (rebar, layers, ducts)
+  • Color-coded material zones: concrete = grey, rebar = orange-red, soil = brown, steel = metallic silver, waterproofing = blue, gravel = tan
+  • Key dimension labels and material callouts in 繁體中文 overlaid as annotation bubbles
+  • Clean white or light grey background; no clutter; professional engineering visualization style
+  • Isometric or 3/4 perspective angle that best reveals the structure's key features`,
+};
+
+let current = 'RC結構';
+let selectedType = '平面圖';
+let selectedScale = '1:50';
+
+// ── UI 互動 ──
+// ── Combobox 狀態 ──
+let comboboxOptions = [];
+
+function setCategory(c, el) {
+  current = c;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  const o = document.getElementById('object');
+  o.innerHTML = '';
+  config[c].objects.forEach(i => {
+    const zhLabel = i.label.replace(/\s*\(.*?\)/g, '').trim();
+    o.innerHTML += `<option value="${i.en}">${zhLabel}</option>`;
+  });
+  comboboxOptions = config[c].presets;
+  document.getElementById('presetCustom').value = comboboxOptions[0] || '';
+  renderDropdown(comboboxOptions);
+  closeCombobox();
+}
+
+function renderDropdown(options) {
+  const sel = document.getElementById('presetSelect');
+  const cur = document.getElementById('presetCustom').value;
+  sel.innerHTML = '<option value="">─ 自行輸入 ─</option>' +
+    options.map(o => `<option value="${o.replace(/"/g,'&quot;')}"${o===cur?' selected':''}>${o}</option>`).join('');
+}
+
+function openCombobox() {
+  renderDropdown(comboboxOptions);
+  const sel = document.getElementById('presetSelect');
+  sel.classList.add('open');
+  sel.size = Math.min(comboboxOptions.length + 1, 8);
+  sel.focus();
+}
+
+function closeCombobox() {
+  const sel = document.getElementById('presetSelect');
+  sel.classList.remove('open');
+  sel.size = 0;
+}
+
+function toggleCombobox() {
+  const sel = document.getElementById('presetSelect');
+  if (sel.classList.contains('open')) { closeCombobox(); }
+  else { openCombobox(); }
+}
+
+function filterCombobox(val) {
+  const filtered = val
+    ? comboboxOptions.filter(o => o.toLowerCase().includes(val.toLowerCase()))
+    : comboboxOptions;
+  renderDropdown(filtered.length ? filtered : comboboxOptions);
+  closeCombobox();
+}
+
+function onPresetChange() {
+  const sel = document.getElementById('presetSelect');
+  const val = sel.value;
+  closeCombobox();
+  const input = document.getElementById('presetCustom');
+  input.value = val;
+  input.focus();
+  const len = input.value.length;
+  input.setSelectionRange(len, len);
+}
+
+// 點擊外部關閉
+document.addEventListener('click', function(e) {
+  if (!document.getElementById('presetWrap').contains(e.target)) closeCombobox();
+});
+
+function selectType(el) {
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  selectedType = el.textContent.trim();
+}
+
+function selectScale(el) {
+  document.querySelectorAll('.scale-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  selectedScale = el.textContent.trim();
+}
+
+// ── 核心：生成強化版 Prompt ──
+function generate() {
+  const obj    = document.getElementById('object').value;
+  const pre    = document.getElementById('presetCustom').value.trim();
+  const det    = document.getElementById('detail').value.trim();
+  const std    = document.getElementById('standard').value.trim();
+  const spec   = config[current].spec;
+  const notes  = config[current].notes;
+  const typeEn = typeMap[selectedType] || selectedType;
+
+  // 將中文尺寸標準轉換為英文輸出用文字（去除中文括號部分）
+  const preEn = pre.replace(/[，,。]/g, ',');
+
+  // 產生當日日期（西元格式）
+  const now = new Date();
+  const yyyy = now.getFullYear();
+  const mm   = String(now.getMonth() + 1).padStart(2, '0');
+  const dd   = String(now.getDate()).padStart(2, '0');
+  const todayStr = `${yyyy}-${mm}-${dd}`;
+
+  const scaleStr = selectedScale === 'NTS（不按比例）'
+    ? 'NTS (Not to Scale) — graphic scale bar only; do **NOT** imply any numeric scale ratio'
+    : '**' + selectedScale + '** — apply to ALL views; include ratio label + graphic scale bar; do **NOT** mix scales';
+
+  let prompt =
+`# ROLE & MISSION
+
+You are a **licensed professional civil/structural engineer and CAD drafter** with 20+ years of experience in Taiwan construction projects.
+Produce a **technically rigorous, code-compliant engineering drawing** based on the specifications below.
+Every element must reflect real-world construction practice in Taiwan.
+
+> **Language rule:** All annotation labels, dimension callouts, material notes, and title block text must be written in **Traditional Chinese（繁體中文）**.
+> Prompt language is English for AI clarity; all drawing output text must be 繁體中文.
+
+---
+
+# SECTION 1 — DRAWING SPECIFICATION
+
+| Field | Value |
+|---|---|
+| **Engineering Category** | ${current} / ${getCategoryEn(current)} |
+| **Drawing Subject** | ${obj} |
+| **Drawing Type & View** | ${typeEn} |
+| **Drawing Scale** | ${scaleStr} |
+| **Nominal Size / Geometry** | ${preEn} |
+
+> ⚠️ **Unit rule:** All dimensions are in **millimeters (mm)** unless a unit is explicitly stated alongside the value. Do NOT convert or restate dimensions in any other unit.`;
+
+  if (det) {
+    prompt += `\n| **Construction Details (User)** | ${det} |`;
+  }
+  if (std) {
+    prompt += `\n| **Design Code / Standard** | ${std} |`;
+  }
+
+  // ── 爆炸圖專屬補充區塊 ──
+  if (selectedType === '爆炸圖') {
+    prompt +=
+`
+
+---
+
+# SECTION 1-EX — EXPLODED VIEW INSTRUCTIONS ⚠️ APPLIES TO THIS DRAWING ONLY
+
+This drawing is an **Exploded View（爆炸圖 / 分解圖）**. The following rules OVERRIDE standard plan/section conventions and apply exclusively to this sheet.
+
+## Component Identification
+
+Before drawing, **identify and list every distinct component** of the object described in Section 1.
+Assign a sequential part number ①②③… to each component.
+Fasteners (bolts, anchors, dowel bars, nuts, washers) are each a separate numbered component.
+
+## Explosion Direction & Spacing
+
+| Component Layer | Explosion Axis | Minimum Offset |
+|---|---|---|
+| Top layers (slabs, cover, cap) | +Z (upward) | 1.5× component height |
+| Lateral components (walls, flanges, plates) | ±X or ±Y | 1.2× component width |
+| Bottom layers (footing, base plate, gravel) | −Z (downward) | 1.5× component height |
+| Fasteners | Along their own insertion axis | 60–80 mm |
+
+## Required Deliverables on This Sheet
+
+1. **Exploded Isometric View** — main drawing area (占圖面 65%)
+2. **Assembled Reference Thumbnail** — small inset (占圖面 15%) showing fully assembled state for orientation
+3. **Parts List Table（零件表）** — bottom or right column (占圖面 20%)
+4. **Assembly Sequence Key** — numbered step arrows ① → ② → ③ below or beside the main view
+
+## Zero-Overlap Rule ⚠️
+
+No exploded component outline may overlap any other component outline.
+If space is tight, increase explosion offset or split into two sub-views (top assembly / bottom assembly).`;
+  }
+
+  prompt +=
+`
+
+---
+
+# SECTION 2 — TECHNICAL & REGULATORY REQUIREMENTS
+
+## 2-A  Code-Based Drawing Content ⚠️ MANDATORY
+
+${spec}
+
+---
+
+## 2-B  Annotation & Drafting Rules
+
+${notes}
+
+### General Dimension & Leader Rules
+- All dimensions in **millimeters (mm)**; write "m" explicitly only when meter unit is intended
+- **Dimension string:** continuous chain dimension line with tick marks; overall dimension outside, partial dimensions inside
+- **Leader lines:** thin line with filled arrowhead pointing to element; annotation text at horizontal shoulder
+
+### Material Hatching — ISO / CNS Standard
+
+| Material | Hatch Pattern |
+|---|---|
+| Cast-in-place concrete | 45° diagonal lines @ 2 mm pitch |
+| Precast concrete | 45° diagonal lines + **"PC"** label |
+| Reinforcing steel | solid filled black circle or bar symbol |
+| Structural steel | solid filled section with outline |
+| Compacted soil / fill | random dots + **"▽ EL.XX.XXX"** grade line |
+| Gravel / drainage layer | open circles (pebble pattern) |
+| Geotextile | thin double dashed line + **"GT"** callout |
+| Waterproofing membrane | thick solid line on protected face |
+
+### Line Weight Schedule
+
+| Line Type | Weight |
+|---|---|
+| Outline / cut section | **0.5 ~ 0.7 mm** (heavy) |
+| Visible object lines | 0.35 mm (medium) |
+| Dimension / leader | 0.18 ~ 0.25 mm (thin) |
+| Centerline (CL) | 0.18 mm chain-dot |
+| Hidden lines | 0.25 mm dashed |
+
+---
+
+# SECTION 3 — DRAWING LAYOUT & TITLE BLOCK
+
+- **Sheet layout:** drawing area occupies **80%** of sheet; title block at **bottom-right corner**
+- **North arrow** + **graphic scale bar** mandatory on all plan views
+- **Revision cloud** + delta mark **（△）** for any updated region; revision log table inside title block
+
+### Title Block Fields（標題欄）
+> Each field in its own cell — do **NOT** merge cells, do **NOT** swap or reorder any field labels
+
+Render the title block as a bordered table with the **exact** field layout below.
+The **left column** of each split row contains the field shown first; the **right column** contains the field shown second.
+
+| Row | Left cell | Right cell |
+|---|---|---|
+| 1 | 工程名稱：[project name] | *(full width)* |
+| 2 | 圖面名稱：[drawing name] | *(full width)* |
+| 3 | 圖號：[drawing number] | 日期：**${todayStr}** |
+| 4 | **比例**：[scale ratio, e.g. 1:50] | 修訂版次：0 |
+| 5 | 繪圖：[ENGINEER NAME] | 審核：[SUPERVISOR NAME] |
+| 6 | 核准：[APPROVED BY NAME] | 核准：*(signature field)* |
+
+> ⚠️ **Critical label rule:**
+> - Row 3 right cell label is **「日期」**（date） — NOT「比例」
+> - Row 4 left cell label is **「比例」**（scale） — NOT「日期」
+> - These two labels must **never** be swapped
+
+> ⚠️ **Date format rule (for the 日期 cell):**
+> Display **only** the date value **${todayStr}** with no parentheses, no format hint, no suffix.
+> Do **NOT** append "(YYYY-MM-DD)", "(AD only)", "(西元)", or any Minguo era date（民國年）after the date.
+
+### General Notes Box（一般說明）— mandatory on every sheet
+1. Applicable design codes
+2. Material strengths / grades
+3. Concrete cover requirements
+4. Special construction notes
+
+---
+
+# SECTION 4 — PRE-DRAWING DIMENSION VERIFICATION ⚠️ DO THIS BEFORE DRAWING
+
+Before generating any graphic content, perform the following self-check and confirm each item is consistent. If any check fails, **correct the value first**, then proceed to draw.
+
+## 4-A  Scale Consistency Check
+
+| Check item | Rule |
+|---|---|
+| Nominal size vs. scale | At scale ${selectedScale === 'NTS（不按比例）' ? 'NTS' : selectedScale}, verify that the given nominal size renders at a physically reasonable size on the sheet. If the element would be smaller than 5 mm or larger than the sheet, flag and adjust the view or add an enlarged detail. |
+| All views same scale | Every view on this sheet must use the same stated scale unless explicitly labeled as a different scale with its own scale bar. |
+| Graphic scale bar | Scale bar divisions must match the stated scale ratio exactly — do NOT round or approximate. |
+
+## 4-B  Dimension Value Checks
+
+Verify **every** dimension against the rules below **before placing any annotation**. Treat this as a mandatory pre-flight checklist — do not skip any item.
+
+### ⚠️ MANDATORY FIRST STEP — Arithmetic Declaration Block
+
+**Before drawing a single dimension line**, produce the following declaration block in plain text.
+This block is your commitment — every dimension on the drawing must trace back to these computed values.
+If you cannot fill in every cell correctly, **stop and recompute before proceeding**.
+
+    == DIMENSION DECLARATION (fill in before drawing) ==
+    Member nominal size:     ___ × ___ mm   (外部總尺寸, from Section 1)
+    Concrete cover:          ___ mm         (from spec / General Notes)
+    Interior clear width:    ___ − 2×___ = ___ mm   (compute, do NOT assume)
+    Interior clear height:   ___ − 2×___ = ___ mm   (compute, do NOT assume)
+
+    Chain check HORIZONTAL:  cover + interior + cover = ___ + ___ + ___ = ___  (must equal nominal width)
+    Chain check VERTICAL:    cover + interior + cover = ___ + ___ + ___ = ___  (must equal nominal height)
+
+    Rebar count (from spec):   ___  bars
+    Rebar diameter:            D___  (= ___ mm)
+    Rebar spacing (if grid):   ___ mm
+    Space check: (___ − 1) × ___ + 2×___ + ___ = ___  (must be ≤ interior clear)
+    == END DECLARATION ==
+
+**A drawing with ANY dimension that contradicts this declaration is incorrect and must be regenerated.**
+
+---
+
+### Rule 1 — Dimension Chain Must Close（尺寸鏈閉合）⚠️ MOST CRITICAL
+
+For every direction (horizontal **and** vertical) on every view, the partial dimensions must sum to the overall dimension.
+**This rule must be verified by written arithmetic BEFORE placing a single dimension line.**
+
+#### 1-A  Mandatory Show-Your-Work Protocol
+
+For EVERY view, write out the following equations explicitly in a scratch block before drawing.
+Do not proceed until both equations balance exactly.
+
+    HORIZONTAL: left_cover + interior_clear_width + right_cover = overall_width
+    VERTICAL:   bottom_cover + interior_clear_height + top_cover = overall_height
+    interior_clear = overall − 2 × cover  (compute this first, use it consistently)
+
+**Example — 400×400 column, cover = 40 mm (CORRECT):**
+    interior_clear = 400 − 2×40 = 320 mm
+    HORIZONTAL: 40 + 320 + 40 = 400 (CORRECT)
+    VERTICAL:   40 + 320 + 40 = 400 (CORRECT)
+    Dimension string to draw: 40 | 320 | 40  (total = 400)
+
+#### 1-B  Failure Patterns — NEVER do these
+
+| ❌ Failure mode | Why it is wrong |
+|---|---|
+| Partial segments each labeled as the **overall** value (e.g., "400 + 400 + 400" on a 400 mm member) | Sum = 1200 ≠ 400 — chain does not close |
+| Two sub-segments labeled "400~400 \| 400~400" with overall also labeled "400" | Sum of subs = 800 ≠ 400 — the overall must be 800 or the subs must be 200 each |
+| Cover labeled at 40 mm in notes but dimension string shows cover = 0 (bar flush to face) | Cover inconsistency |
+| Overall labeled correctly but one sub-segment reuses the overall value | e.g., "40 + 400 + 40 = 480" but sub shows "400" instead of "320" |
+
+> ⚠️ **The single most common AI error:** copying the member's nominal size (e.g. 400) into every sub-segment instead of computing interior_clear = overall − 2×cover. **NEVER fill in sub-segment values without doing the subtraction first.**
+
+**Nominal size definition (MANDATORY — no exceptions):**
+The nominal size given in [Standard Geometry / Nominal Size] always refers to the **overall external dimension** (外部總尺寸).
+- Interior clear dimension = overall − 2 × cover
+- Do NOT interpret the nominal size as an interior or centreline dimension under any circumstance.
+
+---
+
+### Rule 2 — Cover Dimension Consistency（保護層標示一致）
+
+- Cover dimension arrows must point from the **outer face of concrete** to the **outer face of the outermost bar** — NOT to the bar centreline.
+- The cover value shown in dimension callouts must **exactly match** the value stated in the General Notes box (一般說明).
+- Typical values: beams / columns = **40 mm**; footings = **60 mm**; slabs = **20 mm** (top) / **40 mm** (bottom exposed).
+- Do NOT mix cover values between callouts on the same member unless top and bottom faces are intentionally different.
+
+---
+
+### Rule 3 — Label Both Sides of Symmetric Members（對稱構件兩側均須標示）
+
+- For rectangular columns, footings, and symmetric beams: label cover on **both** left and right faces; **both** top and bottom faces.
+- Do NOT label only one side and leave the other implied — both sides must be explicitly dimensioned.
+- If the member is symmetric, left cover = right cover; verify and label both.
+
+---
+
+### Rule 4 — Unit Consistency（單位一致）
+
+- All dimensions on the same sheet must use the **same unit (mm)** unless a separate unit symbol is explicitly written beside that value.
+- Do **NOT** mix mm and cm on the same drawing.
+- Flag and correct any value that appears anomalously small (e.g. "4" where cover should be "40 mm") or anomalously large (e.g. "4000" where column width should be "400 mm").
+
+---
+
+### Rule 5 — Rebar Count × Spacing vs. Member Dimension（鋼筋數量與尺寸對應）
+
+- For n bars at spacing s: occupied length = (n − 1) × s + 2 × side cover + bar diameter. This total must fit within the labeled member dimension.
+- The number of bar symbols (dots / circles) drawn in every cross-section must **exactly match** the bar mark quantity in the rebar schedule table (e.g. "8-D25" → exactly 8 dots visible in section).
+- Minimum clear bar spacing ≥ max(25 mm, 1.33 × max aggregate size, d_b) per ACI 318 / 建築物混凝土結構設計規範 Sec. 25.2.
+
+---
+
+### Rule 6 — No Overlapping or Redundant Labels（標注不重疊不重複）
+
+- Each dimension span must be labeled **once only** per view. Do NOT label the same span twice with different values.
+- **Do NOT stack two dimension lines for the identical span** (e.g., two parallel arrows both spanning the full 400 mm width, one labeled "400" above and another "400" below) — this is redundant and creates confusion about which value is authoritative.
+- If an overall dimension and its sub-segments are both shown, they must appear on **different dimension strings** (outer string = overall; inner string = sub-segments). The overall and its sub-segments must not occupy the same string level.
+- Dimension text, leader text, and bar callouts must **not** overlap section outlines, hatch lines, or bar symbols.
+- Leader lines must not cross each other; re-route if necessary.
+- If space is tight, use a detail bubble and enlarged detail view rather than cramming overlapping labels.
+
+Correct layout for a 400 mm span with cover:
+    Outer string:  |←————— 400 ——————→|   (overall)
+    Inner string:  |← 40 →|← 320 →|← 40 →|   (sub-segments)
+
+NEVER produce:
+    String 1:  |←— 400 —→|
+    String 2:  |←— 400 —→|   (duplicate of String 1 — PROHIBITED)
+
+## 4-C  Geometry Plausibility Check
+
+Before finalising the drawing, confirm:
+- [ ] Member proportions look visually correct for the stated scale (e.g. a 500×500 column is square, not rectangular)
+- [ ] Rebar is drawn **inside** the concrete outline with correct cover offset — not outside or on the boundary
+- [ ] Openings, haunches, and tapers are dimensioned from a clear datum (CL or face of member)
+- [ ] No dimension label overlaps another label or crosses a section line
+- [ ] **Dimension segment count sanity:** for a simple rectangular section the vertical string has exactly **3 segments** (cover | interior | cover) and the horizontal string has exactly **3 segments**. If you see 4 or more segments on a simple rectangular member with no haunches or openings, stop — you have introduced a phantom segment.
+- [ ] **Total segment count = number of physical zones.** Count the actual zones in the cross-section (left cover zone / rebar zone / right cover zone = 3). The number of sub-dimension segments must equal this count exactly.
+- [ ] Verify that NO sub-segment value equals the member's nominal size (e.g., a sub-segment showing "400" inside a 400 mm member is always wrong).
+
+> **If any check above reveals an error or ambiguity**, state the correction as a brief note at the top of the drawing in a box labeled **「尺寸核對說明」**, then proceed with the corrected values.
+
+---
+
+# SECTION 5 — OUTPUT QUALITY STANDARD
+
+The resulting drawing must meet the standard of a **construction document（施工圖）** issued for contractor tendering（招標）or on-site execution（施工）in Taiwan.
+It must be **indistinguishable from a drawing produced by a professional engineering or architectural firm registered in Taiwan**, following **CNS drawing conventions** and the design codes specified above.
+
+## 5-A  Pre-Submission Self-Verification Checklist
+
+Before outputting the final drawing, answer each item. If any answer is NO, correct and re-check before submitting.
+
+| # | Check item | Pass? |
+|---|---|---|
+| V1 | Every dimension chain closes (partial sum = overall) in BOTH horizontal and vertical directions | ☐ YES / ☐ NO |
+| V2 | No sub-segment value equals the member's full nominal size | ☐ YES / ☐ NO |
+| V3 | The same span is labeled exactly once per view (no duplicate parallel dimension strings) | ☐ YES / ☐ NO |
+| V4 | Concrete cover in dimension callouts matches the value in the General Notes box | ☐ YES / ☐ NO |
+| V5 | Rebar symbol count in section view matches the bar mark quantity (e.g., "8-D25" → 8 dots) | ☐ YES / ☐ NO |
+| V6 | Number of sub-segments per direction = number of distinct physical zones (typically 3 for a plain section) | ☐ YES / ☐ NO |
+| V7 | No dimension text, leader, or callout overlaps a section line, hatch, or bar symbol | ☐ YES / ☐ NO |
+| V8 | Scale bar divisions match the stated scale ratio exactly | ☐ YES / ☐ NO |
+
+**Include the completed checklist table at the bottom of your response**, below the drawing output, as proof of verification.`;
+
+  document.getElementById('output').value = prompt;
+}
+
+function getCategoryEn(c) {
+  const map = {
+    'RC結構':  'Reinforced Concrete Structure',
+    '鋼結構':  'Steel Structure',
+    '路橋工程':'Road and Bridge Engineering',
+    '擋土護坡':'Earth Retaining and Slope Protection',
+    '排水箱涵':'Drainage and Box Culvert',
+    '水土保持':'Soil and Water Conservation',
+    '景觀植栽':'Landscape and Planting',
+    '室內裝修':'Interior Construction',
+  };
+  return map[c] || c;
+}
+
+function copyText() {
+  const t = document.getElementById('output');
+  if (!t.value) return;
+  navigator.clipboard.writeText(t.value).then(() => showToast('✅ 提示語已複製到剪貼簿'));
+}
+
+function clearOutput() {
+  document.getElementById('output').value = '';
+}
+
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+// ── 初始化 ──
+window.onload = () => setCategory('RC結構', document.querySelector('.tab'));
+
+// ── PWA Service Worker 註冊 ──
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => console.log('SW registered:', reg.scope))
+      .catch(err => console.warn('SW registration failed:', err));
+  });
+}
+</script>
+</body>
+</html>
